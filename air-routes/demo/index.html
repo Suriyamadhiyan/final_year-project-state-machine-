@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>State Machine Demo</title>
+    <meta charset="UTF-8">
+
+    <meta property="og:url" content="http://statemachine.davestewart.io/" />
+    <meta property="og:type" content="article" />
+    <meta property="og:title" content="JavaScript State Machine" />
+    <meta property="og:description" content="State Machine is a library for managing a finite set of states, and moving between them via actions and transitions" />
+    <meta property="og:image" content="https://cloud.githubusercontent.com/assets/132681/20332705/af478f0e-aba5-11e6-93ff-c930307c790a.png" />
+
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:site" content="@dave_stewart">
+    <meta name="twitter:creator" content="@dave_stewart">
+    <meta name="twitter:title" content="JavaScript State Machine">
+    <meta name="twitter:description" content="State Machine is a library for managing a finite set of states, and moving between them via actions and transitions">
+    <meta name="twitter:image" content="https://cloud.githubusercontent.com/assets/132681/20332705/af478f0e-aba5-11e6-93ff-c930307c790a.png">
+
+    <script src="/assets/vendor/jquery.min.js"></script>
+    <script src="/assets/vendor/ga.js"></script>
+    <script src="/assets/js/state-machine.js"></script>
+    <script src="/assets/js/setup.js"></script>
+
+    <script src="/assets/vendor/TweenMax.min.js"></script>
+
+    <link rel="stylesheet" href="/assets/vendor/bootstrap.min.css">
+    <link rel="stylesheet" href="/assets/css/styles.css">
+    <link rel="stylesheet" href="/assets/css/index.css">
+
+    <style type="text/css">
+        #map {
+            border: 1px solid #CCC;
+            width: 960px;
+            height: 500px;
+            cursor: default;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #map > * {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        #map .background {
+            background-image: url("assets/img/map.svg");
+            width: 100%;
+            height: 100%;
+            opacity: 0.3;
+        }
+
+        #map a.city {
+            transition: 0.5s all;
+            height: 20px;
+            position: absolute;
+            line-height: 1em;
+            margin: 0;
+            text-shadow: 0 3px 1px rgba(0, 0, 0, 0.2);
+        }
+
+        #map a.city[disabled] {
+            color: #AAA;
+            text-shadow: none;
+        }
+
+        #map a.city span {
+            position: absolute;
+            display: block;
+            transform: translate(-50%, -50%);
+            margin: 0;
+            padding: 0;
+            text-align: center;
+        }
+
+        #plane {
+            position: absolute;
+            left: 0;
+            top: 0;
+            margin-top: -20px;
+            margin-left: -20px;
+            pointer-events: none;
+        }
+
+        #plane .gfx {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 40px;
+            height: 40px;
+            display: inline-block;
+            background-image: url("assets/img/plane.svg");
+        }
+    </style>
+</head>
+<body>
+
+    <h1>State Machine Demo</h1>
+
+    <main class="states">
+
+        <section>
+            <p>State Machine is a library for managing a finite set of states, and moving between them via actions and transitions.</p>
+            <p>From its intuitive configuration through its powerful event-based architecture and rich API, State Machine makes it easy to describe and manage interaction with complex state-dependent systems like components, multi-step forms, purchase funnels, visualisations or games.</p>
+            <p>The demo below shows-off many of StateMachine's features. View the source code and console for more info.</p>
+        </section>
+
+        <section id="states">
+            <div id="map">
+                <div class="background"></div>
+                <canvas height="498" width="958" id="canvas"></canvas>
+                <div id="locations"></div>
+                <span id="plane"><span class="gfx"></span></span>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+
+        // ------------------------------------------------------------------------------------------------
+        // plane
+
+            function Plane(map)
+            {
+                this.map = map;
+                this.pos = $('#plane').get(0);
+                this.rot = $('#plane .gfx').get(0);
+                this.setPosition(-100, -100);
+            }
+
+            Plane.prototype =
+            {
+                map: null,
+                pos: null,
+                rot: null,
+
+                x: 0,
+                y: 0,
+                a: 0,
+
+                setPosition: function (x, y)
+                {
+                    TweenLite.set(this.pos, {x:x, y:y});
+                    this.onUpdate();
+                },
+
+                flyTo: function (city, onComplete)
+                {
+                    // coords
+                    var x    = city.x;
+                    var y    = city.y;
+                    var dx   = x - this.x;
+                    var dy   = y - this.y;
+                    var dist = Math.sqrt(dx * dx + dy * dy);
+                    var a    = Math.atan2(dy, dx) * (180 / Math.PI);
+
+                    // draw
+                    this.map.start();
+
+                    // rotate
+                    TweenLite.killTweensOf(this.rot);
+                    TweenLite.to(this.rot, 0.5, {rotation:a + '_short'});
+
+                    // fly
+                    TweenLite.killTweensOf(this.pos);
+                    TweenLite.to(this.pos, dist / 200, {x:x, y:y, ease:Power1.easeInOut, delay:0.3, onComplete:onComplete, onUpdate:this.onUpdate.bind(this)})
+                },
+
+                onUpdate: function ()
+                {
+                    this.x = this.pos._gsTransform.x;
+                    this.y = this.pos._gsTransform.y;
+                    this.map.draw(this.x, this.y);
+                }
+
+            };
+
+
+        // ------------------------------------------------------------------------------------------------
+        // trails
+
+            function Map ()
+            {
+                // elements
+                this.canvas = document.getElementById('canvas');
+                this.ctx    = this.canvas.getContext('2d');
+
+                // scaling
+                //this.ctx.globalCompositeOperation = 'screen';
+                this.ctx.imageSmoothingEnabled = true;
+                this.ctx.canvas.width       = 960 * 4;
+                this.ctx.canvas.height      = 500 * 4;
+                this.ctx.scale(0.25, 0.25);
+                this.ctx.translate(2, 2);
+
+                // drawing
+                this.ctx.strokeStyle = '#e74c3c';
+                this.ctx.lineWidth   = 1;
+            }
+
+            Map.prototype =
+            {
+                // canvas
+                canvas      : null,
+                ctx         : null,
+
+                // variables
+                lineState   : true,
+                lineLength  : 0,
+
+                start: function ()
+                {
+                    this.ctx.beginPath();
+                },
+
+                end: function ()
+                {
+                    this.ctx.closePath();
+                },
+
+                draw: function (x, y)
+                {
+                    var ctx = this.ctx;
+
+                    // draw
+                    this.lineLength ++;
+                    if(this.lineLength > 1)
+                    {
+                        this.lineLength = 0;
+                        this.lineState = ! this.lineState;
+                    }
+                    this.lineState
+                        ? ctx.lineTo(x * 4, y * 4)
+                        : ctx.moveTo(x * 4, y * 4);
+                    ctx.stroke();
+                },
+
+                fade: function ()
+                {
+                    var ctx = this.ctx;
+                    ctx.fillStyle = 'rgba(255, 255, 255, .05)';
+                    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                },
+
+                // methods
+                clear: function ()
+                {
+                    var ctx = this.ctx;
+                    ctx.save();
+                    ctx.setTransform(1, 0, 0, 1, 0, 0);
+                    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                    ctx.restore();
+                }
+
+            };
+
+
+        // ------------------------------------------------------------------------------------------------
+        // cities
+
+            function Cities (data)
+            {
+                // data
+                this.data = data.reduce(function(data, obj) {
+                    obj.to = obj.to.split(' ');
+                    data[obj.id] = obj;
+                    return data;
+                }, {});
+
+                // elements
+                this.$el = $('#locations');
+            }
+
+            Cities.prototype =
+            {
+                data: null,
+
+                $el: null,
+
+                get:function(id)
+                {
+                    var city = this.data[id];
+                    if(!city)
+                    {
+                        throw new Error('No city named "' +id+ '"');
+                    }
+                    return city;
+                },
+
+                add: function (id)
+                {
+                    var city = this.data[id];
+                    if(city)
+                    {
+                        this.draw(city);
+                        return city;
+                    }
+                },
+
+                update:function (ids)
+                {
+                    this.$el.find('a').each(function(i, e)
+                    {
+                        $(e).attr('disabled', ids.indexOf(e.id) == -1);
+                    });
+                },
+
+                draw:function (city)
+                {
+                    // variables
+                    var from    = city.id;
+                    var label   = from.replace('_', ' ');
+                    var x       = city.x;
+                    var y       = city.y;
+
+                    // marker
+                    var html = '<a href="#" class="city" id="' +from+ '" style="left:' +x+ 'px; top:' +y+ 'px"><span>' +label+ '</span></a>';
+                    var $city = $(html).hide().fadeIn();
+                    this.$el.append($city);
+                },
+
+                onClick: function (callback)
+                {
+                    this.$el.on('click', 'a.city', function(event)
+                    {
+                        event.preventDefault();
+                        callback(event.currentTarget.id);
+                    });
+                }
+
+            };
+
+
+        // ------------------------------------------------------------------------------------------------
+        // state
+
+            /**
+             * StateMachine World Map Demo
+             *
+             * So why this demo?
+             *
+             * It demonstrates a lot of StateMachine features, namely:
+             *
+             * - Complex relationships / transitions
+             * - Adding states and transitions on the fly
+             * - Responding to State events
+             * - Updating / interacting with a UI
+             * - Animation and asynchronous transitions
+             * - Initial empty state
+             *
+             * To add:
+             *
+             * - fsm.cancel() - Plane should return to "from" city
+             * - fsm.do() - Plane should divert to "to" city
+             * - Round-the-world - Handle animation for plane to wrap from one side to the other
+             *
+             * To look at:
+             *
+             * - Delayed start
+             */
+
+            // data
+            var data =
+            [
+                {x: -100, y: -100, id: 'none',          to: 'London'},
+                {x: 58,   y: 82,   id: 'Anchorage',     to: 'New_York'},
+                {x: 779,  y: 148,  id: 'Beijing',       to: 'Mumbai Tokyo'},
+                {x: 259,  y: 409,  id: 'Buenos_Aires',  to: 'Cape_Town Mexico_City'},
+                {x: 494,  y: 404,  id: 'Cape_Town',     to: 'Nairobi Sao_Paulo'},
+                {x: 607,  y: 204,  id: 'Dubai',         to: 'Mumbai Nairobi Moscow'},
+                {x: 448,  y: 265,  id: 'Lagos',         to: 'London Dubai Cape_Town Nairobi'},
+                {x: 437,  y: 113,  id: 'London',        to: 'New_York Moscow Lagos Nairobi'},
+                {x: 123,  y: 222,  id: 'Mexico_City',   to: 'Sao_Paulo Buenos_Aires New_York'},
+                {x: 533,  y: 96,   id: 'Moscow',        to: 'London Dubai Beijing'},
+                {x: 668,  y: 223,  id: 'Mumbai',        to: 'Nairobi Dubai Singapore Beijing'},
+                {x: 552,  y: 293,  id: 'Nairobi',       to: 'Dubai Lagos Cape_Town Perth'},
+                {x: 224,  y: 147,  id: 'New_York',      to: 'Mexico_City San_Francisco Anchorage London'},
+                {x: 773,  y: 400,  id: 'Perth',         to: 'Singapore Sydney Cape_Town'},
+                {x: 72,   y: 149,  id: 'San_Francisco', to: 'New_York Philedelphia'},
+                {x: 214,  y: 366,  id: 'Philedelphia',  to: 'SanJose London'},
+                {x: 224,   y: 82,  id: 'SanJose',       to: 'Philedelphia Anchorage'},
+                {x: 295,  y: 366,  id: 'Sao_Paulo',     to: 'Mexico_City Buenos_Aires Lagos'},
+                {x: 769,  y: 286,  id: 'Singapore',     to: 'Perth Beijing Mumbai'},
+                {x: 873,  y: 413,  id: 'Sydney',        to: 'Perth Tokyo'},
+                {x: 855,  y: 167,  id: 'Tokyo',         to: 'Beijing Sydney'}
+            ];
+
+            // variables
+            var fsm, map, cities, plane;
+
+            // objects
+            map     = new Map();
+            plane   = new Plane(map);
+            cities  = new Cities(data);
+
+            // click handler
+            cities.onClick(function(id){ fsm.do(id); });
+
+            // state machine
+            fsm = new StateMachine({
+
+                invalid: true,
+
+                initial: 'none',
+
+                transitions: [
+                    // no transitions to start with!
+                ],
+
+                handlers:
+                {
+                    // when a state is added to the FSM, add a city on the map
+                    'state.add': function (event, fsm)
+                    {
+                        var to = event.target;
+                        console.warn('State added  : ', to);
+                        cities.add(to);
+                        console.log('Added city   : ', to);
+
+                    },
+
+                    // when an action starts, pause the FSM and animate the plane
+                    ':start': function (event, fsm)
+                    {
+                        // get city
+                        var city = cities.get(event.transition.to);
+
+                        // pause transition and fly there
+                        fsm.pause();
+                        plane.flyTo(city, this.onTransitionComplete.bind(this));
+                    },
+
+
+                    'change': function (event, fsm)
+                    {
+                        // variables
+                        var id      = fsm.state;
+                        var city    = cities.get(id);
+
+                        // debug
+                        console.info('state change :', id);
+
+                        // add connections if not yet added
+                        if(city && !city.added && city.to.length)
+                        {
+                            fsm.addConnections(city);
+                            city.added = true;
+                        }
+
+                        // update the UI
+                        cities.update(fsm.transitions.getStatesFrom(id));
+                    }
+                },
+
+                methods:
+                {
+                    // once animation has completed, resume state machine
+                    onTransitionComplete: function()
+                    {
+                        map.end();
+                        this.resume();
+                    },
+
+                    // when a city has been added, add all its connections (expressed as transitions)
+                    addConnections: function (city)
+                    {
+                        // variables
+                        var from = city.id;
+
+                        // loop over connected cities and add transitions
+                        console.group('Adding connected cities...');
+                        city.to.forEach(function(to)
+                        {
+                            if(!this.transitions.hasTransition(to, from, to))
+                            {
+                                console.log('Adding trans : ', from, ' > ', to);
+                                this.add(to, from, to);
+                            }
+                        }.bind(this));
+                        console.groupEnd();
+                    }
+
+                }
+
+            });
+
+            // start
+            fsm.add('London : none > London');
+            fsm.do('London');
+
+
+    </script>
+
+
+    <script>
+        if (window.parent !== window || location.search === '?embed=1') {
+            const $map = $('#map')
+            $('html, body')
+                .css('overflow', 'hidden')
+
+            $('body')
+                .css('margin', 0)
+                .addClass('embedded')
+                .append($map)
+
+            $(window)
+                .on('resize', function resize () {
+                    $map.css('zoom', window.innerWidth / 960)
+                })
+                .trigger('resize')
+        }
+    </script>
+
+    <style>
+        body.embedded h1,
+        body.embedded #toc,
+        body.embedded #home,
+        body.embedded .states {
+            display: none;
+        }
+        body.embedded #map {
+            border: 0;
+        }
+    </style>
+
+</body>
+</html>
