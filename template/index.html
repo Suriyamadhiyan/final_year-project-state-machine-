@@ -1,0 +1,144 @@
+<html>
+    <head>
+        <link rel="stylesheet" href="/template/css/form-style.css">
+    </head>
+    <body>
+        
+        <center>
+        <div class ="row">
+            <div class="col-md-6 mx-auto p-0">
+                <div class="card">
+        <div class="login-box">
+            <div class="login-snip">
+                <input id="tab-1" type="radio" name="tab" class="sign-in" checked><label for="tab-1" class="tab">Login</label>
+                <input id="tab-2" type="radio" name="tab" class="sign-up"><label for="tab-2" class="tab">Sign Up</label>
+                <div class="login-space">
+                    <div class="login">
+                        <div class="group">
+                            <form id="loginform">
+                            <label for="user" class="label">Username</label>
+                            <input id="username" name="username" type="text" class="input"  placeholder="Enter your username"autocomplete="off">
+                        </div>
+                        <div class="group">
+                            <label for="pass" class="label">Password</label>
+                            <input id="password" name="password" type="password" class="input" data-type="password" placeholder="Enter your password"autocomplete="off">
+                        </div>
+                        <div class="group">
+                            <input id="check" type="checkbox" class="check" checked>
+                            <label for="check"><span class="icon"></span> Keep me Signed in</label>
+                        </div>
+                        <div class="group">
+                            <input type="submit" class="button" value="Sign In">
+                        </div>
+                        <div class="hr"></div>
+                        <div class="foot">
+                            <a href="#">Forgot Password?</a>
+                        </div>
+                    </div>
+                </form>
+                <form id="registrationForm">
+                    <div class="sign-up-form">
+                        <div class="group">
+                            <label for="user" class="label">Username</label>
+                            <input id="username"name="username" type="text" class="input" placeholder="Create your Username">
+                        </div>
+                        <div class="group">
+                            <label for="pass" class="label">Password</label>
+                            <input id="password"name="password" type="password" class="input" data-type="password" placeholder="Create your password">
+                        </div>
+                        <div class="group">
+                            <label for="pass" class="label">Repeat Password</label>
+                            <input id="con-password" name="con-password" type="password" class="input" data-type="password" placeholder="Repeat your password" >
+                        </div>
+                        <div class="group">
+                            <label for="pass" class="label">Email Address</label>
+                            <input id="email" name="email" type="email" class="input" placeholder="Enter your email address">
+                        </div>
+                        <div class="group">
+                            <input type="submit" class="button" value="Sign Up">
+                        </div>
+                        <div class="hr"></div>
+                        <div class="foot">
+                            <label for="tab-1">Already Member?</label>
+                        </div>
+                    </div>
+                </form>    
+                </div>
+            </div>
+        </div>   
+        </div>
+        </div>
+        </div>
+
+    </center>
+    <script>
+        const registrationForm = document.getElementById('registrationForm');
+        function click(){
+          document.getElementById('registrationForm').reset();
+      }
+      const loginForm = document.getElementById('loginform');
+  
+        registrationForm.addEventListener('submit', (event) => {
+          event.preventDefault();
+  
+          const formData = new FormData(registrationForm);
+          const formDataJson = JSON.stringify(Object.fromEntries(formData.entries()));
+  
+          
+          fetch('http://localhost:3000/register', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: formDataJson
+          })
+          .then(response => {
+            if (response.ok) {
+              alert('Registration successful!');
+            } else if(response.status==300){
+              alert("username is already exist");
+            }
+            else {
+              alert('inside Registration failed.');
+            }
+          })
+          .catch(error => {
+            console.log(error);
+            alert('Registration failed.');
+          });
+        });
+
+
+  //add the event listner for login form 
+  loginForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+  
+    const logindata = new FormData(loginForm);
+    const loginjsondata = JSON.stringify(Object.fromEntries(logindata.entries()));
+
+  //login request
+  fetch('http://localhost:3000/login', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: loginjsondata
+  })
+  .then((response) => {
+    if (response.ok) {
+     // response.json().then((data) => {
+        // Save the JWT token in local storage
+        //localStorage.setItem('token', data.token);
+        alert('User logged in successfully!');
+        window.location.href = '/home';
+        
+     // });
+    } else {
+      alert('Failed to login.');
+    }
+  });
+  });
+  
+      </script>
+    </body>
+</html>

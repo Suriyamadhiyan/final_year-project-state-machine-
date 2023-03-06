@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>State Machine Demo</title>
+    <meta charset="UTF-8">
+    <script src="/assets/vendor/jquery.min.js"></script>
+    <script src="/assets/vendor/ga.js"></script>
+    <script src="/assets/js/state-machine.js"></script>
+    <script src="/assets/js/setup.js"></script>
+
+    <script src="/assets/vendor/TweenMax.min.js"></script>
+
+    <link rel="stylesheet" href="/assets/vendor/bootstrap.min.css">
+    <link rel="stylesheet" href="/assets/css/styles.css">
+    <link rel="stylesheet" href="/assets/css/index.css">
+
+    <style type="text/css">
+        #map {
+            border: 1px solid #CCC;
+            width: 960px;
+            height: 500px;
+            cursor: default;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #map > * {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        #map .background {
+            background-image: url("assets/img/map.svg");
+            width: 100%;
+            height: 100%;
+            opacity: 0.3;
+        }
+
+        #map a.city {
+            transition: 0.5s all;
+            height: 20px;
+            position: absolute;
+            line-height: 1em;
+            margin: 0;
+            text-shadow: 0 3px 1px rgba(0, 0, 0, 0.2);
+        }
+
+        #map a.city[disabled] {
+            color: #AAA;
+            text-shadow: none;
+        }
+
+        #map a.city span {
+            position: absolute;
+            display: block;
+            transform: translate(-50%, -50%);
+            margin: 0;
+            padding: 0;
+            text-align: center;
+        }
+
+        #plane {
+            position: absolute;
+            left: 0;
+            top: 0;
+            margin-top: -20px;
+            margin-left: -20px;
+            pointer-events: none;
+        }
+
+        #plane .gfx {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 40px;
+            height: 40px;
+            display: inline-block;
+            background-image: url("assets/img/plane.svg");
+        }
+        .topnav {
+            overflow: hidden;
+
+          }
+          
+          .topnav a {
+            float: left;
+            color: #651515;
+            text-align: center;
+            padding: 14px 16px;
+            text-decoration: none;
+            font-size: 18px;
+          }
+          
+          .topnav a:hover {
+            background-color: #ddd;
+            color: black;
+          }
+          
+          .topnav a.active {
+            background-color: #04AA6D;
+            color: white;
+          }
+          .hidden {
+			display: none;
+		}
+          
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="topnav">
+            <a class="active" href="#home" <%= home ? '' : 'style="display: none;"' %>>Home</a>
+            <% if (input=="true") { %>
+                <a href="/input">Input</a>
+              <% } %>
+
+            <a id="logout-btn" href="#" <%= logout ? '' : 'style="display: none;"' %>>Logout</a>
+          </div>
+      </header>
+      <br>
+      <br>
+
+     
+    <h1>Air Routes</h1>
+   
+      
+    <main class="states">
+        <section id="states">
+            <div id="map">
+                <div class="background"></div>
+                <canvas height="498" width="958" id="canvas"></canvas>
+                <div id="locations"></div>
+                <span id="plane"><span class="gfx"></span></span>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+
+        //
+        
+           //asking the conformation to logout
+        const logoutBtn = document.querySelector('#logout-btn');
+
+        logoutBtn.addEventListener('click', (event) => {
+          event.preventDefault();
+          const confirmLogout = confirm('Are you sure you want to log out?');
+          if (confirmLogout) {
+            const logoutForm = document.createElement('form');
+            logoutForm.method = 'POST';
+            logoutForm.action = '/logout';
+            document.body.appendChild(logoutForm);
+            logoutForm.submit();
+          }
+        });
+//
+
+ // ------------------------------------------------------------------------------------------------
+        // plane
+            function Plane(map)
+            {
+                this.map = map;
+                this.pos = $('#plane').get(0);
+                this.rot = $('#plane .gfx').get(0);
+                this.setPosition(-100, -100);
+            }
+
+            Plane.prototype =
+            {
+                map: null,
+                pos: null,
+                rot: null,
+
+                x: 0,
+                y: 0,
+                a: 0,
+
+                setPosition: function (x, y)
+                {
+                    TweenLite.set(this.pos, {x:x, y:y});
+                    this.onUpdate();
+                },
+
+                flyTo: function (city, onComplete)
+                {
+                    // coords
+                    var x    = city.x;
+                    var y    = city.y;
+                    var dx   = x - this.x;
+                    var dy   = y - this.y;
+                    var dist = Math.sqrt(dx * dx + dy * dy);
+                    var a    = Math.atan2(dy, dx) * (180 / Math.PI);
+
+                    // draw
+                    this.map.start();
+
+                    // rotate
+                    TweenLite.killTweensOf(this.rot);
+                    TweenLite.to(this.rot, 0.5, {rotation:a + '_short'});
+
+                    // fly
+                    TweenLite.killTweensOf(this.pos);
+                    TweenLite.to(this.pos, dist / 200, {x:x, y:y, ease:Power1.easeInOut, delay:0.3, onComplete:onComplete, onUpdate:this.onUpdate.bind(this)})
+                },
+
+                onUpdate: function ()
+                {
+                    this.x = this.pos._gsTransform.x;
+                    this.y = this.pos._gsTransform.y;
+                    this.map.draw(this.x, this.y);
+                }
+
+            };
+
+
+        // ------------------------------------------------------------------------------------------------
+        // trails
+
+            function Map ()
+            {
+                // elements
+                this.canvas = document.getElementById('canvas');
+                this.ctx    = this.canvas.getContext('2d');
+
+                // scaling
+                //this.ctx.globalCompositeOperation = 'screen';
+                this.ctx.imageSmoothingEnabled = true;
+                this.ctx.canvas.width       = 960 * 4;
+                this.ctx.canvas.height      = 500 * 4;
+                this.ctx.scale(0.25, 0.25);
+                this.ctx.translate(2, 2);
+
+                // drawing
+                this.ctx.strokeStyle = '#e74c3c';
+                this.ctx.lineWidth   = 1;
+            }
+
+            Map.prototype =
+            {
+                // canvas
+                canvas      : null,
+                ctx         : null,
+
+                // variables
+                lineState   : true,
+                lineLength  : 0,
+
+                start: function ()
+                {
+                    this.ctx.beginPath();
+                },
+
+                end: function ()
+                {
+                    this.ctx.closePath();
+                },
+
+                draw: function (x, y)
+                {
+                    var ctx = this.ctx;
+
+                    // draw
+                    this.lineLength ++;
+                    if(this.lineLength > 1)
+                    {
+                        this.lineLength = 0;
+                        this.lineState = ! this.lineState;
+                    }
+                    this.lineState
+                        ? ctx.lineTo(x * 4, y * 4)
+                        : ctx.moveTo(x * 4, y * 4);
+                    ctx.stroke();
+                },
+
+                fade: function ()
+                {
+                    var ctx = this.ctx;
+                    ctx.fillStyle = 'rgba(255, 255, 255, .05)';
+                    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                },
+
+                // methods
+                clear: function ()
+                {
+                    var ctx = this.ctx;
+                    ctx.save();
+                    ctx.setTransform(1, 0, 0, 1, 0, 0);
+                    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                    ctx.restore();
+                }
+
+            };
+
+
+        // ------------------------------------------------------------------------------------------------
+        // cities
+
+            function Cities (data)
+            {
+                // data
+                this.data = data.reduce(function(data, obj) {
+                    obj.to = obj.to.split(' ');
+                    data[obj.id] = obj;
+                    return data;
+                }, {});
+
+                // elements
+                this.$el = $('#locations');
+            }
+
+            Cities.prototype =
+            {
+                data: null,
+
+                $el: null,
+
+                get:function(id)
+                {
+                    var city = this.data[id];
+                    if(!city)
+                    {
+                        throw new Error('No city named "' +id+ '"');
+                    }
+                    return city;
+                },
+
+                add: function (id)
+                {
+                    var city = this.data[id];
+                    if(city)
+                    {
+                        this.draw(city);
+                        return city;
+                    }
+                },
+
+                update:function (ids)
+                {
+                    this.$el.find('a').each(function(i, e)
+                    {
+                        $(e).attr('disabled', ids.indexOf(e.id) == -1);
+                    });
+                },
+
+                draw:function (city)
+                {
+                    // variables
+                    var from    = city.id;
+                    var label   = from.replace('_', ' ');
+                    var x       = city.x;
+                    var y       = city.y;
+
+                    // marker
+                    var html = '<a href="#" class="city" id="' +from+ '" style="left:' +x+ 'px; top:' +y+ 'px"><span>' +label+ '</span></a>';
+                    var $city = $(html).hide().fadeIn();
+                    this.$el.append($city);
+                },
+
+                onClick: function (callback)
+                {
+                    this.$el.on('click', 'a.city', function(event)
+                    {
+                        event.preventDefault();
+                        callback(event.currentTarget.id);
+                    });
+                }
+
+            };
+
+
+        // ------------------------------------------------------------------------------------------------
+        // state
+
+            /**
+             * StateMachine World Map Demo
+             *
+             * So why this demo?
+             *
+             * It demonstrates a lot of StateMachine features, namely:
+             *
+             * - Complex relationships / transitions
+             * - Adding states and transitions on the fly
+             * - Responding to State events
+             * - Updating / interacting with a UI
+             * - Animation and asynchronous transitions
+             * - Initial empty state
+             *
+             * To add:
+             *
+             * - fsm.cancel() - Plane should return to "from" city
+             * - fsm.do() - Plane should divert to "to" city
+             * - Round-the-world - Handle animation for plane to wrap from one side to the other
+             *
+             * To look at:
+             *
+             * - Delayed start
+             */
+
+            // data
+                              
+            const data1 ='<%= data %>';//getting the data from the db
+            const some=JSON.parse(data1.replace(/&#34;/g, '"'));//actually we are getting '&#34;x&#34;:' this instead of 'x:' so that helps to convertto 'x:' like this
+
+            var data = some;//some is having the json data that gets from the db
+         
+            // variables
+            var fsm, map, cities, plane;
+
+            // objects
+            map     = new Map();
+            plane   = new Plane(map);
+            cities  = new Cities(data);
+            // click handler
+            cities.onClick(function(id){ fsm.do(id); });
+
+            // state machine
+            fsm = new StateMachine({
+
+                invalid: true,
+
+                initial: 'none',
+
+                transitions: [
+                    // no transitions to start with!
+                ],
+
+                handlers:
+                {
+                    // when a state is added to the FSM, add a city on the map
+                    'state.add': function (event, fsm)
+                    {
+                        var to = event.target;
+                        console.warn('State added  : ', to);
+                        cities.add(to);
+                        console.log('Added city   : ', to);
+
+                    },
+
+                    // when an action starts, pause the FSM and animate the plane
+                    ':start': function (event, fsm)
+                    {
+                        // get city
+                        var city = cities.get(event.transition.to);
+
+                        // pause transition and fly there
+                        fsm.pause();
+                        plane.flyTo(city, this.onTransitionComplete.bind(this));
+                    },
+
+
+                    'change': function (event, fsm)
+                    {
+                        // variables
+                        var id      = fsm.state;
+                        var city    = cities.get(id);
+
+                        // debug
+                        console.info('state change :', id);
+
+                        // add connections if not yet added
+                        if(city && !city.added && city.to.length)
+                        {
+                            fsm.addConnections(city);
+                            city.added = true;
+                        }
+
+                        // update the UI
+                        cities.update(fsm.transitions.getStatesFrom(id));
+                    }
+                },
+
+                methods:
+                {
+                    // once animation has completed, resume state machine
+                    onTransitionComplete: function()
+                    {
+                        map.end();
+                        this.resume();
+                    },
+
+                    // when a city has been added, add all its connections (expressed as transitions)
+                    addConnections: function (city)
+                    {
+                        // variables
+                        var from = city.id;
+
+                        // loop over connected cities and add transitions
+                        console.group('Adding connected cities...');
+                        city.to.forEach(function(to)
+                        {
+                            if(!this.transitions.hasTransition(to, from, to))
+                            {
+                                console.log('Adding trans : ', from, ' > ', to);
+                                this.add(to, from, to);
+                            }
+                        }.bind(this));
+                        console.groupEnd();
+                    }
+
+                }
+
+            });
+
+            // start
+            fsm.add('London : none > London');
+            fsm.do('London');
+
+
+    </script>
+
+
+    <script>
+        if (window.parent !== window || location.search === '?embed=1') {
+            const $map = $('#map')
+            $('html, body')
+                .css('overflow', 'hidden')
+
+            $('body')
+                .css('margin', 0)
+                .addClass('embedded')
+                .append($map)
+
+            $(window)
+                .on('resize', function resize () {
+                    $map.css('zoom', window.innerWidth / 960)
+                })
+                .trigger('resize')
+        }
+    </script>
+
+    <style>
+        body.embedded h1,
+        body.embedded #toc,
+        body.embedded #home,
+        body.embedded .states {
+            display: none;
+        }
+        body.embedded #map {
+            border: 0;
+        }
+    </style>
+
+</body>
+</html>
