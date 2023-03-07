@@ -135,9 +135,8 @@
                 <span id="plane"><span class="gfx"></span></span>
             </div>
         </section>
-
     </main>
-
+    <pre><div><p>Total distance Traveled =<p><b><p id="tdist"></p></b></div></pre>
     <script>
 
         //
@@ -297,80 +296,175 @@
 
         // ------------------------------------------------------------------------------------------------
         // cities
-
-            function Cities (data)
-            {
-                // data
-                this.data = data.reduce(function(data, obj) {
-                    obj.to = obj.to.split(' ');
-                    data[obj.id] = obj;
-                    return data;
-                }, {});
-
-                // elements
-                this.$el = $('#locations');
-            }
-
-            Cities.prototype =
-            {
-                data: null,
-
-                $el: null,
-
-                get:function(id)
-                {
-                    var city = this.data[id];
-                    if(!city)
-                    {
-                        throw new Error('No city named "' +id+ '"');
+        let dist_data=null;
+        let from_l='none';
+        let to_l=null;
+        let t_dist=0;
+      function hide_dist(ids,id){
+          if(ids.indexOf(id) == -1){
+              const dist_element = document.getElementsByClassName('.location');
+              dist_element[0].style.display = 'none';
+          }
+      }
+  
+  
+              function Cities (data)
+              {
+                  // data
+                  this.data = data.reduce(function(data, obj) {
+                      obj.to = obj.to.split(' ');
+                      obj.distance = obj.distance.split(' ');
+                      data[obj.id] = obj;
+                      return data;
+                  }, {});
+  
+                  // elements
+                  this.$el = $('#locations');
+              }
+  
+              Cities.prototype =
+              {
+                  data: null,
+  
+                  $el: null,
+  
+                  get:function(id)
+                  {
+                      var city = this.data[id];
+                      if(!city)
+                      {
+                          throw new Error('No city named "' +id+ '"');
+                      }
+                      return city;
+                  },
+  
+                  add: function (id)
+                  {
+                      var city = this.data[id];
+  
+                      if(city)
+                      {
+                          this.draw(city);
+                          //print city
+                          console.log('current city',city);
+                          return city;
+                      }
+                  },
+  
+                  update:function (ids)
+                  {
+                      this.$el.find('a').each(function(i, e)
+                      {
+                          $(e).attr('disabled', ids.indexOf(e.id) == -1);
+                          display_dist(ids);
+                      });
+  
+                  },
+  
+                  draw:function (city)
+                  {
+                      // variables
+                      var from    = city.id;
+                      var label   = from.replace('_', ' ');
+                      var x       = city.x;
+                      var y       = city.y;
+                      const current = data.find(obj => obj.id === from_location);//get the current id tolocation and the distance also
+                      const tolocation=current.to;
+                      //route_weight(from_location);
+                      let index = tolocation.indexOf(from);
+                      const dist=current.distance;//get the all the distance of the from route
+                      const dist_d=dist[index];//get the current distance of the route
+                      var html = '<a href="#" class="city" id="' +from+ '" style="left:' +x+ 'px; top:' +y+ 'px"><span>' +label+ '</span><br><span class="'+from+'"></span></a>';
+                      var $city = $(html).hide().fadeIn();
+                      this.$el.append($city);
+                      console.log('to check the printing time',dist_data);
+                      
+                      
+                  },
+  
+                  onClick: function (callback)
+                  {
+                      
+                      this.$el.on('click', 'a.city', function(event)
+                      {
+                          event.preventDefault();
+                          callback(event.currentTarget.id);
+                          
+                      });
+                  }
+  
+              };
+              function route_weight(id){   
+                const current = data.find(obj => obj.id === id);
+                const tolocation=current.to;
+                const dist=current.distance;
+                if(id!='none'){
+                    console.warn('not none')
+                for(let i=0;i < tolocation.length;i++){
+                    if(tolocation[i]!=null){
+                        const myHeading = document.getElementsByClassName(tolocation[i]);
+                        console.warn(tolocation[i]);
+                        if(myHeading!=null){
+                            console.log('found');
+                            myHeading[0].textContent = dist[i];
+                        }
+                        else{
+                            console.log("Not found");
+                        }
                     }
-                    return city;
-                },
-
-                add: function (id)
-                {
-                    var city = this.data[id];
-                    if(city)
-                    {
-                        this.draw(city);
-                        return city;
-                    }
-                },
-
-                update:function (ids)
-                {
-                    this.$el.find('a').each(function(i, e)
-                    {
-                        $(e).attr('disabled', ids.indexOf(e.id) == -1);
-                    });
-                },
-
-                draw:function (city)
-                {
-                    // variables
-                    var from    = city.id;
-                    var label   = from.replace('_', ' ');
-                    var x       = city.x;
-                    var y       = city.y;
-
-                    // marker
-                    var html = '<a href="#" class="city" id="' +from+ '" style="left:' +x+ 'px; top:' +y+ 'px"><span>' +label+ '</span></a>';
-                    var $city = $(html).hide().fadeIn();
-                    this.$el.append($city);
-                },
-
-                onClick: function (callback)
-                {
-                    this.$el.on('click', 'a.city', function(event)
-                    {
-                        event.preventDefault();
-                        callback(event.currentTarget.id);
-                    });
                 }
+            }
+            else{
+                console.warn("it is in the none state")
+            }
+        }
+              //display and undisplay the distance
+              function display_dist(x) {
+                  var y=[];
+                  //it fetch all the available class name of the span tag
+                  const spans = document.querySelectorAll('span');
+                  for (let i = 0; i < spans.length; i++) {
+                    const classList = spans[i].classList;
+                    //gets the all span class name and store it in the y array
+                    y.push(classList[0]);
+                  }
+                  y = y.filter(item => item !== undefined && item !== 'gfx');//to clear the un wanted span class names
+                  //checks that all the y routes is available in the span class(x array)
+                  const allExist = x.every(item => y.includes(item));  
+                  if (allExist) {
+                      for (let i = 0; i < y.length; i++) {
+                          //getts all the individual class name and undisplay that all span distance
+                          const un=document.getElementsByClassName(y[i]);
+                          if(un!=null){
+                              un[0].style.display = "none";
+                              un[0].style.fontSize = "10px";
+                              un[0].style.color = "#E46878";
+                          }
+                          
+                        }
+                          for(var i=0;i< x.length;i++)
+                          {
+                            const un=document.getElementsByClassName(x[i]);
+                            un[0].style.display = "inline"; 
+                          }
+                  }
+              } 
 
-            };
-
-
+              function total_distance(id){
+                if(id!='none'){
+                            const current = data.find(obj => obj.id === from_l);
+                            to_l=id;
+                            const tolocation=current.to;
+                            let index = tolocation.indexOf(to_l);
+                            const dist=current.distance;
+                            dist_data=dist[index];
+                            let intValue = parseFloat(dist_data);
+                            t_dist +=intValue;//add the distance
+                            const set_dist= document.getElementById("tdist");
+                            set_dist.textContent = t_dist;//display the total distance in html page
+                            from_l=to_l;
+                }
+        }
         // ------------------------------------------------------------------------------------------------
         // state
 
@@ -402,6 +496,7 @@
             // data
                               
             const data1 ='<%= data %>';//getting the data from the db
+            console.warn(data1);
             const some=JSON.parse(data1.replace(/&#34;/g, '"'));//actually we are getting '&#34;x&#34;:' this instead of 'x:' so that helps to convertto 'x:' like this
 
             var data = some;//some is having the json data that gets from the db
@@ -413,8 +508,11 @@
             map     = new Map();
             plane   = new Plane(map);
             cities  = new Cities(data);
+            console.log('city data',cities);
             // click handler
-            cities.onClick(function(id){ fsm.do(id); });
+            cities.onClick(function(id){ fsm.do(id);
+             });
+             let from_location=null;//sample
 
             // state machine
             fsm = new StateMachine({
@@ -457,12 +555,16 @@
                         var id      = fsm.state;
                         var city    = cities.get(id);
 
+                        total_distance(id);
+                        route_weight(id);
+                       
                         // debug
                         console.info('state change :', id);
 
                         // add connections if not yet added
                         if(city && !city.added && city.to.length)
                         {
+                            console.warn('whefhewfhofwofwo',city);
                             fsm.addConnections(city);
                             city.added = true;
                         }
@@ -482,11 +584,12 @@
                     },
 
                     // when a city has been added, add all its connections (expressed as transitions)
+                    
                     addConnections: function (city)
                     {
                         // variables
                         var from = city.id;
-
+                        from_location=from;
                         // loop over connected cities and add transitions
                         console.group('Adding connected cities...');
                         city.to.forEach(function(to)
@@ -495,6 +598,7 @@
                             {
                                 console.log('Adding trans : ', from, ' > ', to);
                                 this.add(to, from, to);
+                               
                             }
                         }.bind(this));
                         console.groupEnd();
@@ -502,13 +606,11 @@
 
                 }
 
-            });
-
-            // start
-            fsm.add('London : none > London');
-            fsm.do('London');
-
-
+            });            
+            //fsm.do('London');
+            //fsm.add('London','London','London');
+            
+           
     </script>
 
 

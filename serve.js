@@ -76,7 +76,7 @@ if (req.session.token){
   const logout = properties[`${userRole}.logout`];
 //get the data
 let data = null; 
-db.query('SELECT * FROM route', (err, results) => {
+db.query("SELECT t1.x, t1.y, t1.city as id,t1.tolocation,GROUP_CONCAT(t2.distance ORDER BY t2.destination SEPARATOR ' ') AS distance FROM map_main t1 JOIN map_sub t2 ON t1.id = t2.id AND t1.city = t2.from_location GROUP BY t1.id, t1.city", (err, results) => {
   if(err){
     console.log(err);
   }
@@ -89,29 +89,12 @@ db.query('SELECT * FROM route', (err, results) => {
     }
     data =JSON.stringify(results);
   }
-});
-  //getting the distance
-  let dist=null;
-  db.query('SELECT * FROM map_sub', (err, results) => {
-    if(err){
-      console.log(err);
-    }
-    else if(results==0){
-      console.log('no results found');
-    }
-    else{
-      for (let i = 0; i < results.length; i++) {
-        renameKey(results[i], "tolocation", "to");//rename the key name tolocation-to
-        
-      }
-    }
 
-  });
+  
   //render the index.html file and also sen the user rights 
-  res.render(path.join(__dirname, 'home/demo', 'index.ejs'), { home, input, logout,data });
-
-
-
+  
+  res.render(path.join(__dirname, 'home/demo', 'index.ejs'), { home, input, logout,data});
+});
 }
 
 else{
