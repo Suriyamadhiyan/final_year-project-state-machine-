@@ -123,7 +123,7 @@ app.post('/register', (req, res) => {
     
     // hash the password
    bcrypt.genSalt(10, (err, salt) => {
-            bcrypt.hash(password, salt, (err, hash) => {
+           bcrypt.hash(password, salt, (err, hash) => {
             if (err) {
               console.log(err);
               return res.status(500).json({ error: 'Internal server error' });

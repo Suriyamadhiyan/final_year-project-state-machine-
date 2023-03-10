@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>State Machine Demo</title>
+    <title>Air routes</title>
     <meta charset="UTF-8">
     <script src="/assets/vendor/jquery.min.js"></script>
     <script src="/assets/vendor/ga.js"></script>
@@ -43,7 +43,7 @@
             position: absolute;
             line-height: 1em;
             margin: 0;
-            text-shadow: 0 3px 1px rgba(0, 0, 0, 0.2);
+            
         }
 
         #map a.city[disabled] {
@@ -94,7 +94,7 @@
           
           .topnav a:hover {
             background-color: #ddd;
-            color: black;
+            color: rgba(79, 71, 71, 0.553);
           }
           
           .topnav a.active {
@@ -125,7 +125,6 @@
      
     <h1>Air Routes</h1>
    
-      
     <main class="states">
         <section id="states">
             <div id="map">
@@ -136,14 +135,10 @@
             </div>
         </section>
     </main>
-    <pre><div><p>Total distance Traveled =<p><b><p id="tdist"></p></b></div></pre>
     <script>
 
-        //
-        
-           //asking the conformation to logout
+        //asking the conformation to logout
         const logoutBtn = document.querySelector('#logout-btn');
-
         logoutBtn.addEventListener('click', (event) => {
           event.preventDefault();
           const confirmLogout = confirm('Are you sure you want to log out?');
@@ -399,14 +394,12 @@
                 const tolocation=current.to;
                 const dist=current.distance;
                 if(id!='none'){
-                    console.warn('not none')
                 for(let i=0;i < tolocation.length;i++){
                     if(tolocation[i]!=null){
                         const myHeading = document.getElementsByClassName(tolocation[i]);
-                        console.warn(tolocation[i]);
                         if(myHeading!=null){
                             console.log('found');
-                            myHeading[0].textContent = dist[i];
+                            myHeading[0].textContent = dist[i]+"miles";
                         }
                         else{
                             console.log("Not found");
@@ -414,13 +407,11 @@
                     }
                 }
             }
-            else{
-                console.warn("it is in the none state")
-            }
         }
+        
               //display and undisplay the distance
               function display_dist(x) {
-                  var y=[];
+                var y=[];
                   //it fetch all the available class name of the span tag
                   const spans = document.querySelectorAll('span');
                   for (let i = 0; i < spans.length; i++) {
@@ -441,6 +432,7 @@
                               un[0].style.color = "#E46878";
                           }
                           
+                          
                         }
                           for(var i=0;i< x.length;i++)
                           {
@@ -450,6 +442,69 @@
                   }
               } 
 
+              function get_dist(id){
+                var y=[];
+                var arr1=[];
+                var arr2=[];
+                  //it fetch all the available class name of the span tag
+                  const spans = document.querySelectorAll('span');
+                  for (let i = 0; i < spans.length; i++) {
+                    const classList = spans[i].classList;
+                    //gets the all span class name and store it in the y array
+                    y.push(classList[0]);
+                  }
+                  y = y.filter(item => item !== undefined && item !== 'gfx');
+                //document.addEventListener("DOMContentLoaded", function() {
+                for (let i = 0; i < y.length; i++) {
+                    const element1 = document.getElementById(id);
+                    const element2 = document.getElementById(y[i]);
+
+                    const rect1 = element1.getBoundingClientRect();
+                        const rect2 = element2.getBoundingClientRect();
+                        
+                        const center1 = {
+                          x: rect1.left + rect1.width / 2,
+                          y: rect1.top + rect1.height / 2
+                        };
+                        
+                        const center2 = {
+                          x: rect2.left + rect2.width / 2,
+                          y: rect2.top + rect2.height / 2
+                        };
+                        const dx = center1.x - center2.x;
+                        const dy = center1.y - center2.y;
+                        
+                        const totalDistance = Math.sqrt(dx * dx + dy * dy).toFixed(1);
+                        if(y[i]!='none'&&y[i]!=id){
+                            //console.log("Total distance between elements: ",id,'to',y[i],':' + totalDistance);
+                            arr1.push(totalDistance);//get the distance of the each location
+                            //console.warn(arr1);
+                            arr2.push(y[i]);//based on the distance get the to location
+                            //console.warn(arr2);
+                        }
+                        
+                }  
+                if(id!='none')
+                {
+                        // Create an array of indices based on the sorted order of arr1
+                        const sortedIndices = arr1.map((_, i) => i).sort((a, b) => arr1[a] - arr1[b]);
+
+                        // Sort arr1 and apply the same sorting order to arr2
+                        const sortedArr1 = arr1.slice().sort((a, b) => a - b);
+                        const sortedArr2 = sortedIndices.map((i) => arr2[i]);
+
+                        var sort_dist = sortedArr1.filter((value) => value < 235).sort((a, b) => a - b);
+                        var to_location = sortedArr2.slice(0, sort_dist.length);
+                        //console.warn(data["to"]);
+                        //sort_dist=parseFloat(sort_dist).toString();
+                        const current = data.find(obj => obj.id === from_l);
+                        current.to=to_location;
+                        current.distance=sort_dist;
+                        console.log(data);
+                        console.log('sorted distance',sort_dist,'sorted location',to_location);
+                }
+              }
+
               function total_distance(id){
                 if(id!='none'){
                             const current = data.find(obj => obj.id === from_l);
@@ -457,46 +512,24 @@
                             const tolocation=current.to;
                             let index = tolocation.indexOf(to_l);
                             const dist=current.distance;
+                            if(dist[index]==null){
+                            }
+                            else{
                             dist_data=dist[index];
-                            let intValue = parseFloat(dist_data);
+                            let intValue = parseInt(dist_data);
                             t_dist +=intValue;//add the distance
-                            const set_dist= document.getElementById("tdist");
-                            set_dist.textContent = t_dist;//display the total distance in html page
+                            const set_dist= document.getElementsByClassName("gfx");
+                                set_dist[0].textContent = t_dist+"miles";
+                                set_dist[0].style.color="olive";
+                                set_dist[0].style.fontSize="12px";//display the total distance in html page
+                            }
                             from_l=to_l;
                 }
         }
         // ------------------------------------------------------------------------------------------------
         // state
-
-            /**
-             * StateMachine World Map Demo
-             *
-             * So why this demo?
-             *
-             * It demonstrates a lot of StateMachine features, namely:
-             *
-             * - Complex relationships / transitions
-             * - Adding states and transitions on the fly
-             * - Responding to State events
-             * - Updating / interacting with a UI
-             * - Animation and asynchronous transitions
-             * - Initial empty state
-             *
-             * To add:
-             *
-             * - fsm.cancel() - Plane should return to "from" city
-             * - fsm.do() - Plane should divert to "to" city
-             * - Round-the-world - Handle animation for plane to wrap from one side to the other
-             *
-             * To look at:
-             *
-             * - Delayed start
-             */
-
-            // data
-                              
+            // data                     
             const data1 ='<%= data %>';//getting the data from the db
-            console.warn(data1);
             const some=JSON.parse(data1.replace(/&#34;/g, '"'));//actually we are getting '&#34;x&#34;:' this instead of 'x:' so that helps to convertto 'x:' like this
 
             var data = some;//some is having the json data that gets from the db
@@ -508,7 +541,6 @@
             map     = new Map();
             plane   = new Plane(map);
             cities  = new Cities(data);
-            console.log('city data',cities);
             // click handler
             cities.onClick(function(id){ fsm.do(id);
              });
@@ -554,17 +586,17 @@
                         // variables
                         var id      = fsm.state;
                         var city    = cities.get(id);
-
+                        //get_dist(id);
                         total_distance(id);
-                        route_weight(id);
-                       
+                        
+                        get_dist(id);
+                       route_weight(id);
                         // debug
                         console.info('state change :', id);
 
                         // add connections if not yet added
                         if(city && !city.added && city.to.length)
                         {
-                            console.warn('whefhewfhofwofwo',city);
                             fsm.addConnections(city);
                             city.added = true;
                         }
