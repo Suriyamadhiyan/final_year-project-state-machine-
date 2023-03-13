@@ -23,13 +23,22 @@
             position: relative;
             overflow: hidden;
         }
+        #map p.mid_dist{
+            transition: 0.5s all;
+            height: 20px;
+            position: absolute;
+            line-height: 1em;
+            margin: 0;
+            color:olive;
+            font-size: 9px;
+        }
 
         #map > * {
             position: absolute;
             top: 0;
             left: 0;
         }
-
+        
         #map .background {
             background-image: url("assets/img/map.svg");
             width: 100%;
@@ -45,7 +54,6 @@
             margin: 0;
             
         }
-
         #map a.city[disabled] {
             color: #AAA;
             text-shadow: none;
@@ -131,7 +139,8 @@
                 <div class="background"></div>
                 <canvas height="498" width="958" id="canvas"></canvas>
                 <div id="locations"></div>
-                <span id="plane"><span class="gfx"></span></span>
+                <div id="travel_dist"></div>
+                <span id="plane"><span class="gfx"></span><span id="travel"></span></span>
             </div>
         </section>
     </main>
@@ -167,6 +176,7 @@
                 map: null,
                 pos: null,
                 rot: null,
+                trv:null,
 
                 x: 0,
                 y: 0,
@@ -174,8 +184,8 @@
 
                 setPosition: function (x, y)
                 {
-                    TweenLite.set(this.pos, {x:x, y:y});
-                    this.onUpdate();
+                   TweenLite.set(this.pos, {x:x, y:y});
+                   this.onUpdate();
                 },
 
                 flyTo: function (city, onComplete)
@@ -187,7 +197,8 @@
                     var dy   = y - this.y;
                     var dist = Math.sqrt(dx * dx + dy * dy);
                     var a    = Math.atan2(dy, dx) * (180 / Math.PI);
-
+                    var id=city.id;
+                    mid_dist(a,x,y,id);
                     // draw
                     this.map.start();
 
@@ -197,7 +208,14 @@
 
                     // fly
                     TweenLite.killTweensOf(this.pos);
-                    TweenLite.to(this.pos, dist / 200, {x:x, y:y, ease:Power1.easeInOut, delay:0.3, onComplete:onComplete, onUpdate:this.onUpdate.bind(this)})
+                    if(from_l=='none'){
+                        TweenLite.to(this.pos, 5/ 200, {x:x, y:y, ease:Power1.easeInOut, delay:0.3, onComplete:onComplete, onUpdate:this.onUpdate.bind(this)})
+                    }
+                    else{
+                        TweenLite.to(this.pos, dist / 200, {x:x, y:y, ease:Power1.easeInOut, delay:0.0, onComplete:onComplete, onUpdate:this.onUpdate.bind(this)})
+                    }
+                    
+
                 },
 
                 onUpdate: function ()
@@ -389,6 +407,7 @@
                   }
   
               };
+              //print the route weight of the each distance
               function route_weight(id){   
                 const current = data.find(obj => obj.id === id);
                 const tolocation=current.to;
@@ -408,9 +427,51 @@
                 }
             }
         }
-        
+        function mid_dist(a,x,y,id){
+            if(from_l!='none'){
+                //get the latitute and the longitude distance of the from location
+                const before = data.find(obj => obj.id === from_l);//get the current id tolocation and the distance also
+                const b_x=before.x;
+                const b_y=before.y;
+                //compute the mid distance of the two location
+                const mid_x=(b_x+x)/2;
+                const mid_y=(b_y+y)/2;
+                //get the paragraph tag and to make some dynamic changes
+                var some=document.getElementById("travel_dist");
+                var mid_p= document.createElement('p');
+                //mid_p.setAttribute('class', 'mid_dist');
+                var id_name='_'+mid_x+mid_y+'';
+                //mid_p.id =id_name;
+                //console.log('sojdjoifwoi',typeof some);
+                
+
+                var total_p=[];
+                  //it fetch all the available class name of the paragraph tag
+                  const paragh = document.querySelectorAll('p');
+                  for (let i = 0; i < paragh.length; i++) {
+                    const classList = paragh[i].classList;
+                    //gets the all span class name and store it in the y array
+                    total_p.push(classList[0]);
+                  }
+            //this is used to avoid the repetation 
+            if(total_p.indexOf(id_name) == -1){  
+                var p_dist='<p class="mid_dist" id="' +id_name+ '" style="left:' +mid_x+ 'px; top:' +mid_y+ 'px;position:absolute"></p>';
+                some.innerHTML += p_dist; //append the paragraph tag into div tag           
+                const current = data.find(obj => obj.id === from_l);
+                const tolocation=current.to;
+                let index = tolocation.indexOf(id);
+                const dist=current.distance; 
+                const mid_travel_distance=dist[index];
+                var print_dist=document.getElementById(id_name);
+                let num = Math.floor(parseFloat(mid_travel_distance));//to remove the decimal points
+                //print the distance between two airports
+                print_dist.innerHTML=num+"miles";
+            }
+         }
+        }
               //display and undisplay the distance
               function display_dist(x) {
+                
                 var y=[];
                   //it fetch all the available class name of the span tag
                   const spans = document.querySelectorAll('span');
@@ -518,10 +579,12 @@
                             dist_data=dist[index];
                             let intValue = parseInt(dist_data);
                             t_dist +=intValue;//add the distance
-                            const set_dist= document.getElementsByClassName("gfx");
-                                set_dist[0].textContent = t_dist+"miles";
-                                set_dist[0].style.color="olive";
-                                set_dist[0].style.fontSize="12px";//display the total distance in html page
+                            const set_dist= document.getElementById("travel");
+                                set_dist.textContent = t_dist+"miles";
+                                set_dist.style.color="#ed0ce9";
+                                set_dist.style.fontSize="12px";//display the total distance in html page
+                                set_dist.style.position = "absolute"; // set the position property to absolute
+                                set_dist.style.top = "30px";
                             }
                             from_l=to_l;
                 }
@@ -586,11 +649,11 @@
                         // variables
                         var id      = fsm.state;
                         var city    = cities.get(id);
-                        //get_dist(id);
+                       // print_mid(id);
                         total_distance(id);
-                        
                         get_dist(id);
-                       route_weight(id);
+                        route_weight(id);
+                        
                         // debug
                         console.info('state change :', id);
 
