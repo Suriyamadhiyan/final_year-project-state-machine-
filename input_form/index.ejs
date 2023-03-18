@@ -1,0 +1,193 @@
+<html>
+    <head>
+        <title>Input form</title>
+        <link href="/css/bootstrap.min.css"  type="text/css" media="all" rel="stylesheet">
+        <style src="/css/style.css" type="text/css" rel="stylesheet">
+          body, html {
+            height: 100%;
+          }
+          input::placeholder {
+            opacity: 0.5;
+            font-size: 17px;
+            color: rgba(107, 102, 98, 0.578);
+        }
+        #sample
+        {
+          font-size: 17px;
+            color: rgba(107, 102, 98, 0.578);
+        }
+          body{
+            /* Full height */
+            height: 100%;
+            /* Center and scale the image nicely */
+            background-position: center;
+            background-repeat: no-repeat;
+            background-size: cover;
+          }
+        </style>
+    </head>
+    <body>
+        <section class="vh-100 bg-image"
+  style="background-image: url('/asserts/flight2.png');">
+  <div class="mask d-flex align-items-center h-100 gradient-custom-3">
+    <div class="container h-100">
+      <div class="row d-flex justify-content-center align-items-center h-100">
+        <div class="col-12 col-md-9 col-lg-7 col-xl-6">
+          <div class="card" style="border-radius: 15px;">
+            <div class="card-body p-5">
+              
+
+              <form>
+                <div class="form-outline mb-4">
+                  <button type="button" onclick="history.back()"><svg width="16" height="16" fill="currentColor" class="bi bi-arrow-left-short" viewBox="0 0 16 16">
+                    <path fill-rule="evenodd" d="M12 8a.5.5 0 0 1-.5.5H5.707l2.147 2.146a.5.5 0 0 1-.708.708l-3-3a.5.5 0 0 1 0-.708l3-3a.5.5 0 1 1 .708.708L5.707 7.5H11.5a.5.5 0 0 1 .5.5z"/>
+                  </svg></button>
+                  <h2 class="text-uppercase text-center mb-5">Input Form</h2>
+                  
+                </div>
+                <div class="form-outline mb-4">
+                  <input type="text" id="city" class="form-control form-control-lg" placeholder="City Name"/>
+                </div>
+
+                <div class="form-outline mb-4">
+                  <input type="text" id="country" class="form-control form-control-lg" placeholder="Country Code" />
+                </div>
+
+                <div class="form-outline mb-4">
+                  <select id="location" class="form-select form-select-lg " aria-label=".form-select-lg example">
+                    <option value="" >Please select location</option>
+                  </select>
+                </div><br>
+                <div class="d-flex justify-content-center">
+                  <button type="button" id="rst" class="btn btn-warning btn-block btn-lg gradient-custom-4 text-body" onclick="refreshForm()">Reset</button>
+                    <button type="button" id="search1" class="btn btn-warning btn-block btn-lg gradient-custom-4 text-body" onclick="search()">Search</button>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                    <button type="button" id="submit"class="btn btn-success btn-block btn-lg gradient-custom-4 text-body" onclick="save()">Submit</button>   
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<script>
+  const selectElement = document.getElementById("location").style.display='none';
+  const btn = document.getElementById('submit');
+  btn.disabled= true;
+  var btn1=document.getElementById('search1');
+  var btn2=document.getElementById('rst');
+  btn2.style.display='none';
+
+  function search() {
+    const city = document.getElementById('city');
+    const country = document.getElementById('country');
+    const location = document.getElementById('location');
+    if(country.value==''&&city.value==''){
+      city.focus();
+      alert("please fill the country code and city name");
+    }
+    else if(country.value==''||city.value==''){
+      if(country.value==''){
+        country.focus();
+        alert("please fill the country code ");
+      }
+      else{
+        city.focus();
+        alert("please fill the city name");
+      }
+    }
+    else{
+      btn1.style.display= 'none';
+      btn2.style.display='inline';
+    document.getElementById('location').style.display='inline';
+    var cityname=document.getElementById('city').value;
+    var countryname=document.getElementById('country').value;
+    let requestBody = {};
+    requestBody = { city: cityname, country:countryname};
+    fetch('http://localhost:3000/search', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
+    })
+    .then(response =>{
+      if(response.ok){
+        response.json()}
+        else if(response.status==300){
+          alert("city has already exist");
+        }})
+    .then(data => {
+        console.log(data);
+        if(data!=null){
+          const len=data.locations.length;
+          const select = document.getElementById('location'); 
+          
+            for(let i = 0; i < len; i++) {
+            const lat = data.locations[i].referencePosition.latitude;
+            const long = data.locations[i].referencePosition.longitude;
+            const address = data.locations[i].formattedAddress;
+            const option = document.createElement('option');
+            option.value = lat+long+address;
+            option.text = address; 
+            select.appendChild(option);
+           }
+           document.getElementById('location').addEventListener("change", (event) => {
+           const btn = document.getElementById('submit');
+           btn.disabled= false;
+           });
+           var dropdown=document.getElementById('locaton');
+        }
+        else{
+          alert("no values found");
+        }
+    })
+    .catch(error => {
+        console.log(error);
+    });
+  }
+}
+//save button
+function save() {
+  const city = document.getElementById('city');
+  const country = document.getElementById('country');
+  const location = document.getElementById('location');
+  if(location.value==''){
+    city.focus();
+    alert("please select the option");
+  }
+  else{
+let requestBody = {};
+  requestBody = { location:location.value,country:country.value };
+  fetch('http://localhost:3000/save', {
+      method: 'POST',
+      headers: {
+          'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(requestBody)
+  })
+  .then(response => {
+    if (response.ok) {
+      alert('Inserted successful!');
+      location.reload;
+    }
+    else {
+      alert('Failed to insert.');
+      location.reload;
+    }
+  })
+  .catch(error => {
+      console.log(error);
+  });
+}
+}
+//reset button
+function refreshForm() {
+  location.reload();
+}
+
+</script>
+    </body>
+</html>

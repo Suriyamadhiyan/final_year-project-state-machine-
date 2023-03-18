@@ -1,10 +1,10 @@
 const express = require('express');
 const app = express();
-const CircularJSON = require('circular-json');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const path = require('path');
 const mysql = require('mysql2');
+const fs = require('fs');
 var PropertiesReader = require('properties-reader');
 //getting the db properties
 var database = PropertiesReader('config/db.properties');
@@ -201,16 +201,18 @@ app.post('/logout', (req, res) => {
     }
   });
 });
+
+//input page
 app.get('/input', (req, res) => {
   if (req.session.token){
     const user = jwt.verify(req.session.token, 'secret');//decrypt the token 
     const userRole= user.role;//getting the role from the token
     //set the user rights 
     const input = properties[`${userRole}.input`];
-    if(input == true){
-      //app.use('/template', express.static('input'));
-      //const filePath = path.join(__dirname, 'input', 'index.html');
-      //res.sendFile(filePath);
+    if(input == 'true'){
+      app.use(express.static('input_form'));
+      const filePath = path.join(__dirname, 'input_form', 'index.ejs');
+      res.render(filePath);
     }
     else{
       res.redirect('/home');
@@ -221,8 +223,74 @@ app.get('/input', (req, res) => {
   }
   });  
 
+//get the lagitute and longitutde
+app.post('/search', (req, res) => {
+  const city = req.body.city;
+  const country = req.body.country;
+  /*params = (city, country)
+  db.query('SELECT * FROM input_location WHERE username = ? AND country=?',[city ,country], (err, results) => {
+    if (err) {
+      console.log(err);
+      res.sendStatus(500);
+      return;
+    }
+    else if(result!=''){
+      res.sendStatus(300);
+    }
+    else{
+      
+    }
+    
+  });
+  */ 
+  //if()
+      fetch('https://api.myptv.com/geocoding/v1/locations/by-text?searchText='+city+'&countryFilter='+country+'', {
+        method: "GET",
+        headers: {
+          apiKey: "RVVfOTBiOWMyNzVhZTk5NGJmOThjOThjODY3NmE1NWE2NzE6ZTZmYThmOTQtNjZmYS00NDM2LTgzYmMtNzY5ZjU3MjEzZDI1",
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        }
+      }) .then(response => response.json())
+      .then(result =>{
+       res.send(JSON.stringify(result));
+      });
+      //res.send(data);
+});
+//save
+app.post('/save', (req, res) => {
+  const location = req.body.location;
+  const country_code=req.body.country;
+  if(location==''){
+    res.sendStatus(400);
+  }
+  else{
+      var data=location.split(' ');
+      var lat=data[0];
+      var long=data[1];
+      var city=data.slice(2, data.length - 1);
+      var city_name=data[data.length - 1];
+      /* db.query('INSERT INTO map_main (latitude, longitude,city) VALUES (?, ?, ?)', [lat, long,city_name], (err, results) => {
+                  if (err) {
+                    console.log(err);
+                    return res.status(500).json({ error: 'Internal server error' });
+                  }
+                const lastIdInTable1 = results.insertId;
+                connection.query('INSERT INTO table2 (cityName,country_code id) VALUES (?, ?)', [city_name, lastIdInTable1], (error, results) => {
+                  if (error) {
+                    res.sendStatus(303);
+                  }
+                });
+                
+                  res.status(201).json("OK");
 
-//input page
+                }); */
+
+  }
+  
+
+      
+});
 
 // Start the server
 app.listen(3000, () => {

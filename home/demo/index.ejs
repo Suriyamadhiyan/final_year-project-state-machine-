@@ -119,9 +119,9 @@
 
     <header>
         <div class="topnav">
-            <a class="active" href="#home" <%= home ? '' : 'style="display: none;"' %>>Home</a>
+            <a class="active" href="/home" <%= home ? '' : 'style="display: none;"' %>>Home</a>
             <% if (input=="true") { %>
-                <a href="/input">Input</a>
+                <a id="input-btn"  href="#">Input</a>
               <% } %>
 
             <a id="logout-btn" href="#" <%= logout ? '' : 'style="display: none;"' %>>Logout</a>
@@ -158,6 +158,11 @@
             document.body.appendChild(logoutForm);
             logoutForm.submit();
           }
+        });
+        const input_form = document.querySelector('#input-btn');
+        input_form.addEventListener('click', (event) => {
+          event.preventDefault();
+          window.location.href = '/input';
         });
 //
 
@@ -596,7 +601,7 @@
             const some=JSON.parse(data1.replace(/&#34;/g, '"'));//actually we are getting '&#34;x&#34;:' this instead of 'x:' so that helps to convertto 'x:' like this
 
             var data = some;//some is having the json data that gets from the db
-         
+         console.log(data);
             // variables
             var fsm, map, cities, plane;
 
